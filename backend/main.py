@@ -9,7 +9,7 @@ import sys
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from backend.routers import rew, dsp, calage, systeme
+from backend.routers import rew, dsp, calage, systeme, presets
 
 app = FastAPI(
     title="Calage Systeme IA",
@@ -28,6 +28,7 @@ app.include_router(rew.router, prefix="/rew", tags=["REW"])
 app.include_router(dsp.router, prefix="/dsp", tags=["DSP"])
 app.include_router(calage.router, prefix="/calage", tags=["Calage"])
 app.include_router(systeme.router, prefix="/systeme", tags=["Systeme"])
+app.include_router(presets.router, prefix="/presets", tags=["Presets"])
 
 
 @app.get("/")

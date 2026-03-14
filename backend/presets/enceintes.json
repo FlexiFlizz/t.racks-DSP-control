@@ -1,0 +1,193 @@
+{
+  "categories": [
+    {
+      "nom": "Subwoofers",
+      "enceintes": [
+        {
+          "id": "sub_18_generic",
+          "nom": "Sub 18\" generique",
+          "type": "sub",
+          "hp": "18\" (ex: B&C 18SW115, RCF LF18N405)",
+          "bande": "30-120 Hz",
+          "lpf_hz": 120,
+          "hpf_hz": 30,
+          "notes": "Sub standard bass reflex ou horn-loaded"
+        },
+        {
+          "id": "sub_15_generic",
+          "nom": "Sub 15\" generique",
+          "type": "sub",
+          "hp": "15\" (ex: Beyma 15LX60, Eminence Delta 15)",
+          "bande": "35-150 Hz",
+          "lpf_hz": 150,
+          "hpf_hz": 35,
+          "notes": "Sub compact"
+        },
+        {
+          "id": "sub_2x18",
+          "nom": "Sub 2x18\"",
+          "type": "sub",
+          "hp": "2x 18\" (ex: B&C 18TBX100, PD 1860)",
+          "bande": "28-100 Hz",
+          "lpf_hz": 100,
+          "hpf_hz": 28,
+          "notes": "Sub double 18 haute puissance"
+        },
+        {
+          "id": "sub_21",
+          "nom": "Sub 21\"",
+          "type": "sub",
+          "hp": "21\" (ex: B&C 21SW152, Beyma 21LX60)",
+          "bande": "25-100 Hz",
+          "lpf_hz": 100,
+          "hpf_hz": 25,
+          "notes": "Sub infra / festival"
+        }
+      ]
+    },
+    {
+      "nom": "Tops / Mains",
+      "enceintes": [
+        {
+          "id": "top_12_coax",
+          "nom": "Top 12\" coaxial",
+          "type": "top",
+          "hp": "12\" LF + 1.4\" HF coaxial (ex: B&C 12CXN76, RCF CX12N301)",
+          "bande": "80-20000 Hz",
+          "hpf_hz": 80,
+          "notes": "Top polyvalent coaxial, pas de crossover interne"
+        },
+        {
+          "id": "top_12_2way",
+          "nom": "Top 12\" 2 voies",
+          "type": "top",
+          "hp": "12\" LF + 1\" ou 1.4\" HF sur pavillon",
+          "bande": "80-18000 Hz",
+          "hpf_hz": 80,
+          "notes": "Top 2 voies passif classique, crossover interne ~1.5-2.5 kHz"
+        },
+        {
+          "id": "top_15_2way",
+          "nom": "Top 15\" 2 voies",
+          "type": "top",
+          "hp": "15\" LF + 1.4\" ou 2\" HF",
+          "bande": "60-18000 Hz",
+          "hpf_hz": 60,
+          "notes": "Top main puissant, crossover interne ~1.2-2 kHz"
+        },
+        {
+          "id": "top_10_2way",
+          "nom": "Top 10\" 2 voies",
+          "type": "top",
+          "hp": "10\" LF + 1\" HF",
+          "bande": "100-20000 Hz",
+          "hpf_hz": 100,
+          "notes": "Top compact, fill, retour"
+        },
+        {
+          "id": "top_8_2way",
+          "nom": "Top 8\" 2 voies",
+          "type": "top",
+          "hp": "8\" LF + 1\" HF",
+          "bande": "120-20000 Hz",
+          "hpf_hz": 120,
+          "notes": "Top ultra compact, fill, delay"
+        }
+      ]
+    },
+    {
+      "nom": "Mediums / Low-Mid",
+      "enceintes": [
+        {
+          "id": "mid_12",
+          "nom": "Medium 12\"",
+          "type": "low_mid",
+          "hp": "12\" (ex: B&C 12NDL76, RCF L12P200)",
+          "bande": "100-2000 Hz",
+          "hpf_hz": 100,
+          "lpf_hz": 2000,
+          "notes": "Medium dedie dans un systeme 3+ voies"
+        },
+        {
+          "id": "mid_10",
+          "nom": "Medium 10\"",
+          "type": "low_mid",
+          "hp": "10\" (ex: Faital Pro 10PR310)",
+          "bande": "120-3000 Hz",
+          "hpf_hz": 120,
+          "lpf_hz": 3000,
+          "notes": "Medium compact"
+        }
+      ]
+    },
+    {
+      "nom": "Aigus / HF",
+      "enceintes": [
+        {
+          "id": "hf_1_4",
+          "nom": "HF 1.4\" sur pavillon",
+          "type": "high",
+          "hp": "1.4\" (ex: B&C DE620, RCF ND650)",
+          "bande": "1500-20000 Hz",
+          "hpf_hz": 1500,
+          "notes": "Compression 1.4\" standard"
+        },
+        {
+          "id": "hf_2",
+          "nom": "HF 2\" sur pavillon",
+          "type": "high",
+          "hp": "2\" (ex: B&C DE750, RCF ND850)",
+          "bande": "1000-18000 Hz",
+          "hpf_hz": 1000,
+          "notes": "Compression 2\" haute puissance"
+        }
+      ]
+    },
+    {
+      "nom": "Fills / Delays",
+      "enceintes": [
+        {
+          "id": "fill_8",
+          "nom": "Fill 8\"",
+          "type": "fill",
+          "hp": "8\" + 1\" HF",
+          "bande": "120-20000 Hz",
+          "hpf_hz": 120,
+          "notes": "Fill lateral ou avant-scene"
+        },
+        {
+          "id": "delay_10",
+          "nom": "Delay 10\"",
+          "type": "delay",
+          "hp": "10\" + 1\" HF",
+          "bande": "100-20000 Hz",
+          "hpf_hz": 100,
+          "notes": "Enceinte de rappel / delay"
+        }
+      ]
+    },
+    {
+      "nom": "Monitors",
+      "enceintes": [
+        {
+          "id": "monitor_12",
+          "nom": "Retour 12\" coax",
+          "type": "monitor",
+          "hp": "12\" + 1\" ou 1.4\" coaxial",
+          "bande": "80-18000 Hz",
+          "hpf_hz": 80,
+          "notes": "Retour de scene standard"
+        },
+        {
+          "id": "monitor_15",
+          "nom": "Retour 15\"",
+          "type": "monitor",
+          "hp": "15\" + 2\" HF",
+          "bande": "60-18000 Hz",
+          "hpf_hz": 60,
+          "notes": "Retour de scene puissant"
+        }
+      ]
+    }
+  ]
+}
