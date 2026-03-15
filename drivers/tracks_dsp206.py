@@ -125,10 +125,14 @@ PENTES_CROSSOVER = [
 ]
 
 # Parametres d'encodage frequence PEQ
+# Le DSP 408 utilise 1000 pas : freq = 19.70 * (20160/19.70)^(brut/1000)
+# Le DSP 206 (firmware V0104P) utilise 300 pas : freq = 20 * 1000^(brut/300)
+# Verifie sur hardware reel le 2026-03-15
 _FREQ_MIN = 19.70
 _FREQ_MAX = 20160.0
 _FREQ_RATIO = _FREQ_MAX / _FREQ_MIN
-_FREQ_STEPS = 1000
+_FREQ_STEPS = 1000  # DSP 408
+_FREQ_STEPS_206 = 300  # DSP 206
 
 # Trames singleton preformatees
 TRAME_HANDSHAKE = bytes([0x10, 0x02, 0x00, 0x01, 0x01, 0x10, 0x10, 0x03, 0x11])
@@ -279,37 +283,54 @@ def quantifier_gain(db: float) -> float:
 
 # -- Encodage / decodage frequence PEQ --
 
-def freq_brut_vers_hz(brut: int) -> float:
+def freq_brut_vers_hz(brut: int, dsp206: bool = True) -> float:
     """Convertit une valeur brute de frequence PEQ en Hz.
 
-    Echelle logarithmique sur 1000 pas :
-        freq_hz = 19.70 * (20160/19.70) ^ (brut/1000)
+    DSP 206 : freq = 20 * 1000^(brut/300)  (300 pas, verifie hardware)
+    DSP 408 : freq = 19.70 * (20160/19.70)^(brut/1000)  (1000 pas)
 
     Args:
-        brut: valeur brute 0-1000.
+        brut: valeur brute.
+        dsp206: True pour l'encodage DSP 206, False pour DSP 408.
 
     Returns:
         Frequence en Hz.
     """
-    brut = max(0, min(_FREQ_STEPS, brut))
-    return _FREQ_MIN * (_FREQ_RATIO ** (brut / _FREQ_STEPS))
+    if dsp206:
+        brut = max(0, min(_FREQ_STEPS_206, brut))
+        return 20.0 * (1000.0 ** (brut / _FREQ_STEPS_206))
+    else:
+        brut = max(0, min(_FREQ_STEPS, brut))
+        return _FREQ_MIN * (_FREQ_RATIO ** (brut / _FREQ_STEPS))
 
 
-def freq_hz_vers_brut(hz: float) -> int:
+def freq_hz_vers_brut(hz: float, dsp206: bool = True) -> int:
     """Convertit une frequence en Hz vers la valeur brute PEQ.
 
+    DSP 206 : brut = 300 * log10(hz/20) / 3  (verifie hardware)
+    DSP 408 : brut = 1000 * log(hz/19.70) / log(20160/19.70)
+
     Args:
-        hz: frequence en Hz (19.70 - 20160.0).
+        hz: frequence en Hz.
+        dsp206: True pour l'encodage DSP 206.
 
     Returns:
-        Valeur brute entiere 0-1000.
+        Valeur brute entiere.
     """
-    if hz <= _FREQ_MIN:
-        return 0
-    if hz >= _FREQ_MAX:
-        return _FREQ_STEPS
-    return max(0, min(_FREQ_STEPS,
-                      round(math.log(hz / _FREQ_MIN) / math.log(_FREQ_RATIO) * _FREQ_STEPS)))
+    if dsp206:
+        if hz <= 20.0:
+            return 0
+        if hz >= 20000.0:
+            return _FREQ_STEPS_206
+        return max(0, min(_FREQ_STEPS_206,
+                          round(_FREQ_STEPS_206 * math.log10(hz / 20.0) / 3.0)))
+    else:
+        if hz <= _FREQ_MIN:
+            return 0
+        if hz >= _FREQ_MAX:
+            return _FREQ_STEPS
+        return max(0, min(_FREQ_STEPS,
+                          round(math.log(hz / _FREQ_MIN) / math.log(_FREQ_RATIO) * _FREQ_STEPS)))
 
 
 # -- Encodage / decodage Q PEQ --
@@ -552,16 +573,17 @@ def cmd_peq(canal: str, bande: int, gain_db: float,
         )
 
     gain_val = peq_gain_db_vers_brut(gain_db)
-    freq_brut = freq_hz_vers_brut(freq_hz)
+    freq_brut = freq_hz_vers_brut(freq_hz, dsp206=True)
     q_val = q_vers_brut(q)
 
-    freq_lo = freq_brut & 0xFF
-    freq_hi = (freq_brut >> 8) & 0xFF
-
+    # Format DSP 206 (verifie sur hardware, 2026-03-15) :
+    # Chaque parametre sur 2 octets LE (gain, freq, Q)
+    # Pas de padding 0x00 entre gain et freq
     return construire_trame(bytes([
-        CMD_PEQ, idx, bande, gain_val, 0x00,
-        freq_lo, freq_hi, q_val & 0xFF,
-        type_filtre & 0xFF, 0x01 if bypass else 0x00,
+        CMD_PEQ, idx, bande,
+        gain_val & 0xFF, (gain_val >> 8) & 0xFF,
+        freq_brut & 0xFF, (freq_brut >> 8) & 0xFF,
+        q_val & 0xFF, (q_val >> 8) & 0xFF,
     ]))
 
 
