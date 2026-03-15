@@ -164,20 +164,25 @@ def calculer_checksum(data_bytes: bytes) -> int:
     return checksum & 0xFF
 
 
-def construire_trame(payload: bytes) -> bytes:
+def construire_trame(payload: bytes, type_byte: int = 0x02) -> bytes:
     """Construit une trame complete a partir d'un payload.
 
     La trame inclut l'en-tete, la direction (hote -> appareil),
-    la longueur, le payload, le pied de trame et le checksum.
+    le byte type, la longueur, le payload, le pied de trame et le checksum.
+
+    Le Processor Editor utilise type_byte=0x02 pour toutes les commandes.
+    Le DSP accepte aussi 0x01 mais 0x02 est le format officiel
+    (verifie par capture Wireshark du PE, 2026-03-15).
 
     Args:
         payload: octets de commande + donnees (sans direction ni longueur).
+        type_byte: byte type (0x02 par defaut, format officiel PE).
 
     Returns:
         Trame complete prete a envoyer sur le socket TCP.
     """
     longueur = len(payload)
-    data_bytes = bytes([DIR_HOTE_VERS_APPAREIL, 0x01, longueur]) + payload
+    data_bytes = bytes([DIR_HOTE_VERS_APPAREIL, type_byte, longueur]) + payload
     checksum = calculer_checksum(data_bytes)
     return HEADER + data_bytes + FOOTER + bytes([checksum])
 
@@ -710,14 +715,8 @@ def cmd_delay(canal: str, delay_ms: float) -> bytes:
     valeur = round(delay_ms * 96)
     val_lo = valeur & 0xFF
     val_hi = (valeur >> 8) & 0xFF
-    # La commande delay utilise le byte type 0x02 au lieu de 0x01
-    # C'est la seule commande connue qui utilise ce type
     CMD_DELAY = 0x38
-    payload = bytes([CMD_DELAY, idx, val_lo, val_hi])
-    longueur = len(payload)
-    data_bytes = bytes([DIR_HOTE_VERS_APPAREIL, 0x02, longueur]) + payload
-    checksum = calculer_checksum(data_bytes)
-    return HEADER + data_bytes + FOOTER + bytes([checksum])
+    return construire_trame(bytes([CMD_DELAY, idx, val_lo, val_hi]))
 
 
 # ---------------------------------------------------------------------------
