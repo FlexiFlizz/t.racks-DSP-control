@@ -123,14 +123,21 @@ TYPES_PEQ = [
     "All Pass 1", "All Pass 2",
 ]
 
-# Pentes de crossover HPF/LPF
-PENTES_CROSSOVER = [
-    "BW -6", "BW -12", "BW -18", "BW -24", "BW -30",
-    "BW -36", "BW -42", "BW -48",
-    "LR -12", "LR -24", "LR -36", "LR -48",
-    "BS -6", "BS -12", "BS -18", "BS -24", "BS -30",
-    "BS -36", "BS -42", "BS -48",
-]
+# Pentes de crossover HPF/LPF — verifie par capture Wireshark (2026-03-15)
+# 0x00 = bypass (filtre desactive)
+PENTES_CROSSOVER = {
+    "bypass": 0x00,
+    "BW -6": 0x01, "BL -6": 0x02,
+    "BW -12": 0x03, "BL -12": 0x04, "LK -12": 0x05,
+    "BW -18": 0x06, "BL -18": 0x07,
+    "BW -24": 0x08, "BL -24": 0x09, "LK -24": 0x0A,
+    "BW -30": 0x0B, "BL -30": 0x0C,
+    "BW -36": 0x0D, "BL -36": 0x0E, "LK -36": 0x0F,
+    "BW -42": 0x10, "BL -42": 0x11,
+    "BW -48": 0x12, "BL -48": 0x13, "LK -48": 0x14,
+}
+# Index inverse pour decodage
+PENTES_INDEX = {v: k for k, v in PENTES_CROSSOVER.items()}
 
 # Parametres d'encodage frequence PEQ
 # Le DSP 408 utilise 1000 pas : freq = 19.70 * (20160/19.70)^(brut/1000)
@@ -600,57 +607,57 @@ def cmd_peq(canal: str, bande: int, gain_db: float,
     ]))
 
 
-def cmd_hpf(canal: str, freq_hz: float, actif: bool = True,
-            pente: int = 0) -> bytes:
+def cmd_hpf(canal: str, freq_hz: float, pente: str = "BW -24") -> bytes:
     """Construit la commande de filtre passe-haut (HPF).
 
-    Protocole : 10 02 00 01 05 32 [ch] [freq_lo] [freq_hi] [actif] 10 03 [chk]
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Protocole : cmd ch freq_lo freq_hi slope
 
     Args:
         canal: nom du canal.
         freq_hz: frequence de coupure en Hz.
-        actif: True pour activer le filtre, False pour desactiver.
-        pente: index de pente (0-19, voir PENTES_CROSSOVER).
+        pente: nom de la pente (ex: "BW -24", "LK -48", "bypass").
 
     Returns:
         Trame complete.
     """
     idx = _valider_canal(canal)
-    freq_brut = freq_hz_vers_brut(freq_hz) if actif else 0
-    freq_lo = freq_brut & 0xFF
-    freq_hi = (freq_brut >> 8) & 0xFF
+    if pente == "bypass":
+        slope = 0x00
+    else:
+        if pente not in PENTES_CROSSOVER:
+            raise ValueError(f"Pente invalide : '{pente}'. Valides : {list(PENTES_CROSSOVER.keys())}")
+        slope = PENTES_CROSSOVER[pente]
+    freq_brut = freq_hz_vers_brut(freq_hz, dsp206=True)
     return construire_trame(bytes([
-        CMD_HPF, idx, freq_lo, freq_hi, 0x01 if actif else 0x00,
+        CMD_HPF, idx, freq_brut & 0xFF, (freq_brut >> 8) & 0xFF, slope,
     ]))
 
 
-def cmd_lpf(canal: str, freq_hz: float, pente: int = 0,
-            actif: bool = True) -> bytes:
+def cmd_lpf(canal: str, freq_hz: float, pente: str = "BW -24") -> bytes:
     """Construit la commande de filtre passe-bas (LPF).
 
-    Protocole : 10 02 00 01 05 31 [ch] [freq_lo] [freq_hi] [pente] 10 03 [chk]
-
-    Quand le filtre est desactive, la frequence est mise au maximum
-    (valeur brute 1000) pour laisser passer tout le signal.
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Protocole : cmd ch freq_lo freq_hi slope
 
     Args:
         canal: nom du canal.
         freq_hz: frequence de coupure en Hz.
-        pente: index de pente (0-19, voir PENTES_CROSSOVER).
-        actif: True pour activer, False pour laisser passer.
+        pente: nom de la pente (ex: "BW -24", "LK -48", "bypass").
 
     Returns:
         Trame complete.
     """
     idx = _valider_canal(canal)
-    if actif:
-        freq_brut = freq_hz_vers_brut(freq_hz)
+    if pente == "bypass":
+        slope = 0x00
     else:
-        freq_brut = _FREQ_STEPS  # valeur max = passe-tout
-    freq_lo = freq_brut & 0xFF
-    freq_hi = (freq_brut >> 8) & 0xFF
+        if pente not in PENTES_CROSSOVER:
+            raise ValueError(f"Pente invalide : '{pente}'. Valides : {list(PENTES_CROSSOVER.keys())}")
+        slope = PENTES_CROSSOVER[pente]
+    freq_brut = freq_hz_vers_brut(freq_hz, dsp206=True)
     return construire_trame(bytes([
-        CMD_LPF, idx, freq_lo, freq_hi, pente & 0xFF,
+        CMD_LPF, idx, freq_brut & 0xFF, (freq_brut >> 8) & 0xFF, slope,
     ]))
 
 
