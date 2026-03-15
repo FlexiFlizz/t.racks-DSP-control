@@ -44,16 +44,96 @@ REW (mesure) → Calage Systeme IA (analyse + calcul) → DSP t.racks (applicati
 | Frontend | Next.js 16 / shadcn/ui / Tailwind |
 | Signal | NumPy / SciPy |
 | Mesure | REW API REST (localhost:4735) |
-| DSP | t.racks TCP 9761 (reverse-engineere) |
+| DSP | t.racks USB HID + TCP 9761 (reverse-engineere) |
 
 ## DSP supportes
 
 | Modele | Topologie | Statut |
 |--------|-----------|--------|
-| t.racks DSP 206 | 2 in / 6 out | Supporte |
+| t.racks DSP 206 | 2 in / 6 out | Verifie sur hardware reel |
 | t.racks DSP 408 | 4 in / 8 out | Supporte (meme protocole) |
 | t.racks DSP 306 | 3 in / 6 out | Supporte (meme protocole) |
 | t.racks DSP 204 | 2 in / 4 out | Supporte (meme protocole) |
+
+## Protocole t.racks DSP 206 (reverse-engineere)
+
+Protocole binaire proprietaire, entierement decode par capture Wireshark du Processor Editor.
+Connexion USB HID (VID:0168 PID:0821) ou TCP port 9761.
+
+### Table des commandes
+
+| Cmd | Fonction | Payload | Verifie |
+|-----|----------|---------|---------|
+| 0x10 | Handshake | - | Oui |
+| 0x13 | Device Info | - | Oui |
+| 0x20 | Recall Preset | slot_index | Oui |
+| 0x21 | Store Preset | slot_index | Oui |
+| 0x26 | Store Name | name (14B ASCII) | Oui |
+| 0x27 | Get Config | chunk_index | Oui |
+| 0x29 | Get Preset | slot_index | Oui |
+| 0x2A | Lock | ch, val | Capture |
+| 0x2D | Copy (exec) | 00, src, dest | Capture |
+| 0x2F | Copy (setup) | src, dest | Capture |
+| 0x30 | Compresseur | ch, ratio(2B), atk(2B), rel(2B), knee(2B), thresh(2B) | Oui |
+| 0x31 | LPF | ch, freq(2B), slope | Oui |
+| 0x32 | HPF | ch, freq(2B), slope | Oui |
+| 0x33 | PEQ | ch, band, gain(2B), freq(2B), Q(1B), type(1B), bypass(1B) | Oui |
+| 0x34 | Gain | ch, val(2B LE) | Oui |
+| 0x35 | Mute | ch, on/off | Oui |
+| 0x36 | Phase Invert | ch, on/off | Oui |
+| 0x38 | Delay | ch, val(2B LE) [type=0x02] | Oui |
+| 0x39 | Test Tone | type, param | Oui |
+| 0x3A | Matrice | ch, bitmask | Oui |
+| 0x3B | Link | ch, mask | Capture |
+| 0x3D | Channel Name | ch, name(8B ASCII) | Oui |
+| 0x3E | Gate | ch, atk(2B), rel(2B), hold(2B), thresh(2B) | Oui |
+| 0x3F | Limiter | ch, atk(2B), rel(2B), ??(2B), thresh(2B) | Oui |
+| 0x40 | Metres | - | Oui |
+| 0x48 | GEQ | ch, band, val(2B) | Oui |
+
+### Encodages (calibres sur hardware)
+
+| Parametre | Formule | Inverse |
+|-----------|---------|---------|
+| Gain canal | dB = (brut - 280) / 10 | brut = dB * 10 + 280 |
+| Gain PEQ/GEQ | dB = (brut - 120) / 10 | brut = dB * 10 + 120 |
+| Frequence (PEQ/HPF/LPF) | Hz = 20 * 1000^(brut/300) | brut = 300 * log10(Hz/20) / 3 |
+| Q (PEQ) | Q = 10^((brut-16)/40) | brut = 40 * log10(Q) + 16 |
+| Delay | ms = brut / 96 | brut = ms * 96 |
+| Threshold (comp/gate/lim) | dB = (brut - 180) / 2 | brut = dB * 2 + 180 |
+| Attack/Release/Hold | ms = brut + 1 | brut = ms - 1 |
+| Knee (comp) | dB = brut | brut = dB |
+| Ratio (comp) | index 0-15 | Table fixe |
+
+### Mapping canaux DSP 206
+
+| Index | Canal |
+|-------|-------|
+| 0x00 | In A |
+| 0x01 | In B |
+| 0x02 | Out 1 |
+| 0x03 | Out 2 |
+| 0x04 | Out 3 |
+| 0x05 | Out 4 |
+| 0x06 | Out 5 |
+| 0x07 | Out 6 |
+
+### Pentes HPF/LPF (20 + bypass)
+
+0x00=bypass, 0x01=BW-6, 0x02=BL-6, 0x03=BW-12, 0x04=BL-12, 0x05=LK-12,
+0x06=BW-18, 0x07=BL-18, 0x08=BW-24, 0x09=BL-24, 0x0A=LK-24,
+0x0B=BW-30, 0x0C=BL-30, 0x0D=BW-36, 0x0E=BL-36, 0x0F=LK-36,
+0x10=BW-42, 0x11=BL-42, 0x12=BW-48, 0x13=BL-48, 0x14=LK-48
+
+### Types PEQ (0-indexed)
+
+0=Peak, 1=Low Shelf, 2=High Shelf, 3=LP-6dB, 4=LP-12dB,
+5=HP-6dB, 6=HP-12dB, 7=Allpass1, 8=Allpass2
+
+### Ratios compresseur
+
+0=1:1, 1=1:1.1, 2=1:1.3, 3=1:1.5, 4=1:1.7, 5=1:2, 6=1:2.5, 7=1:3,
+8=1:3.5, 9=1:4, 10=1:5, 11=1:6, 12=1:8, 13=1:10, 14=1:20, 15=Limit
 
 ## Installation
 

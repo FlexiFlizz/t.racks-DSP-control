@@ -3,15 +3,15 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from backend.dsp.tracks import TracksDSP
+from backend.dsp.tracks_hid import TracksDSPHID
 
 router = APIRouter()
-_dsp = TracksDSP()
+_dsp = TracksDSPHID()
 
 
 class ConnexionDSP(BaseModel):
-    host: str = "192.168.3.100"
-    port: int = 9761
+    host: str = "usb"
+    port: int = 0
 
 
 class GainCmd(BaseModel):
