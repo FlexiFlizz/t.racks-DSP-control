@@ -685,16 +685,12 @@ def cmd_geq(canal: str, bande: int, db: float) -> bytes:
 def cmd_delay(canal: str, delay_ms: float) -> bytes:
     """Construit la commande de reglage du delay d'un canal.
 
-    Note : la commande de delay n'a pas ete completement documentee
-    dans le reverse-engineering du DSP 408. Cette implementation est
-    basee sur l'analyse des trames de configuration (config dump)
-    ou le delay apparait dans la structure post-PEQ des sorties.
+    Verifie sur hardware reel (DSP 206 firmware V0104P, 2026-03-15)
+    via capture Wireshark du Processor Editor.
 
-    L'encodage suppose est : valeur_brute = delay_ms * 10
-    (resolution 0.1 ms, stocke en LE16).
-
-    ATTENTION : cette commande n'est pas encore verifiee sur un
-    appareil reel. A tester avec precaution.
+    Commande : 0x38
+    Encodage : valeur_brute = delay_ms * 96 (base 96 kHz interne)
+    Particularite : le byte type dans la trame est 0x02 (pas 0x01)
 
     Args:
         canal: nom du canal de sortie.
@@ -711,15 +707,17 @@ def cmd_delay(canal: str, delay_ms: float) -> bytes:
         raise ValueError(
             f"Delay hors plage : {delay_ms} ms. Plage typique : 0-300 ms"
         )
-    # Encodage suppose : 0.1 ms par unite, LE16
-    # Commande presumee : 0x36 (non confirme - a valider)
-    valeur = round(delay_ms * 10)
+    valeur = round(delay_ms * 96)
     val_lo = valeur & 0xFF
     val_hi = (valeur >> 8) & 0xFF
-    # Commande hypothetique basee sur la position dans la table des commandes
-    # (0x31=LPF, 0x32=HPF, 0x33=PEQ, 0x34=Gain, 0x35=Mute, 0x36=Delay?)
-    CMD_DELAY = 0x36
-    return construire_trame(bytes([CMD_DELAY, idx, val_lo, val_hi]))
+    # La commande delay utilise le byte type 0x02 au lieu de 0x01
+    # C'est la seule commande connue qui utilise ce type
+    CMD_DELAY = 0x38
+    payload = bytes([CMD_DELAY, idx, val_lo, val_hi])
+    longueur = len(payload)
+    data_bytes = bytes([DIR_HOTE_VERS_APPAREIL, 0x02, longueur]) + payload
+    checksum = calculer_checksum(data_bytes)
+    return HEADER + data_bytes + FOOTER + bytes([checksum])
 
 
 # ---------------------------------------------------------------------------
