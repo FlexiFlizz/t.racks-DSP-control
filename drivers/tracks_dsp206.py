@@ -116,12 +116,14 @@ NB_CANAUX_METRES = 8
 # Bits de routage matrice (entrees)
 BITS_MATRICE_ENTREE = {"In A": 0x01, "In B": 0x02}
 
-# Types de filtre PEQ
-TYPES_PEQ = [
-    "Peak", "Low Shelf", "High Shelf",
-    "LP -6dB", "LP -12dB", "HP -6dB", "HP -12dB",
-    "All Pass 1", "All Pass 2",
-]
+# Types de filtre PEQ — verifie par capture Wireshark (2026-03-15)
+# Index 0-based
+TYPES_PEQ = {
+    "Peak": 0, "Low Shelf": 1, "High Shelf": 2,
+    "LP -6dB": 3, "LP -12dB": 4, "HP -6dB": 5, "HP -12dB": 6,
+    "Allpass1": 7, "Allpass2": 8,
+}
+TYPES_PEQ_INDEX = {v: k for k, v in TYPES_PEQ.items()}
 
 # Pentes de crossover HPF/LPF — verifie par capture Wireshark (2026-03-15)
 # 0x00 = bypass (filtre desactive)
@@ -355,40 +357,53 @@ def freq_hz_vers_brut(hz: float, dsp206: bool = True) -> int:
 
 # -- Encodage / decodage Q PEQ --
 
-def q_brut_vers_q(brut: int) -> float:
+def q_brut_vers_q(brut: int, dsp206: bool = True) -> float:
     """Convertit une valeur brute de Q en facteur de qualite.
 
-    Echelle logarithmique sur 256 pas :
-        Q = 0.40 * 320.0 ^ (brut / 255)
+    DSP 206 : Q = 10^((brut - 16) / 40)  (verifie par capture Wireshark)
+    DSP 408 : Q = 0.40 * 320^(brut / 255)
 
     Args:
-        brut: valeur brute 0-255.
+        brut: valeur brute.
+        dsp206: True pour l'encodage DSP 206.
 
     Returns:
         Facteur de qualite Q.
     """
-    if brut <= 0:
-        return 0.40
-    if brut >= 255:
-        return 128.0
-    return 0.40 * (320.0 ** (brut / 255.0))
+    if dsp206:
+        return 10.0 ** ((brut - 16) / 40.0)
+    else:
+        if brut <= 0:
+            return 0.40
+        if brut >= 255:
+            return 128.0
+        return 0.40 * (320.0 ** (brut / 255.0))
 
 
-def q_vers_brut(q: float) -> int:
+def q_vers_brut(q: float, dsp206: bool = True) -> int:
     """Convertit un facteur de qualite Q en valeur brute.
 
+    DSP 206 : brut = 40 * log10(Q) + 16  (verifie par capture Wireshark)
+    DSP 408 : brut = log(Q/0.40) / log(320) * 255
+
     Args:
-        q: facteur de qualite (0.40 - 128.0).
+        q: facteur de qualite.
+        dsp206: True pour l'encodage DSP 206.
 
     Returns:
-        Valeur brute entiere 0-255.
+        Valeur brute entiere.
     """
-    if q <= 0.40:
-        return 0
-    if q >= 128.0:
-        return 255
-    return max(0, min(255,
-                      round(math.log(q / 0.40) / math.log(320.0) * 255.0)))
+    if dsp206:
+        if q <= 0.1:
+            return 0
+        return max(0, min(255, round(40.0 * math.log10(q) + 16)))
+    else:
+        if q <= 0.40:
+            return 0
+        if q >= 128.0:
+            return 255
+        return max(0, min(255,
+                          round(math.log(q / 0.40) / math.log(320.0) * 255.0)))
 
 
 # -- Encodage / decodage gain PEQ / GEQ --
@@ -596,14 +611,18 @@ def cmd_peq(canal: str, bande: int, gain_db: float,
     freq_brut = freq_hz_vers_brut(freq_hz, dsp206=True)
     q_val = q_vers_brut(q)
 
-    # Format DSP 206 (verifie sur hardware, 2026-03-15) :
-    # Chaque parametre sur 2 octets LE (gain, freq, Q)
-    # Pas de padding 0x00 entre gain et freq
+    # Format DSP 206 (verifie par capture Wireshark du PE, 2026-03-15) :
+    # cmd ch band gain(2B LE) freq(2B LE) Q(1B) type(1B) bypass(1B)
+    # Q est sur 1 byte (pas 2!)
+    # Types : 1=Peak 2=LowShelf 3=HighShelf 4=LP6 5=LP12
+    #         6=HP6 7=HP12 8=Allpass1 9=Allpass2
     return construire_trame(bytes([
         CMD_PEQ, idx, bande,
         gain_val & 0xFF, (gain_val >> 8) & 0xFF,
         freq_brut & 0xFF, (freq_brut >> 8) & 0xFF,
-        q_val & 0xFF, (q_val >> 8) & 0xFF,
+        q_val & 0xFF,
+        type_filtre & 0xFF,
+        0x01 if bypass else 0x00,
     ]))
 
 
