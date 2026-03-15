@@ -93,11 +93,21 @@ class TracksDSPHID(BaseDSP):
         """Envoie une trame HID et retourne la reponse."""
         if not self._dev:
             return None
-        packet = (bytes([0x00]) + data).ljust(65, b'\x00')
-        self._dev.write(packet)
-        time.sleep(0.1)
-        rep = self._dev.read(64)
-        return bytes(rep) if rep else None
+        try:
+            packet = (bytes([0x00]) + data).ljust(65, b'\x00')
+            self._dev.write(packet)
+            time.sleep(0.1)
+            # Non-bloquant avec timeout manuel
+            self._dev.set_nonblocking(1)
+            for _ in range(10):  # 10 x 50ms = 500ms max
+                rep = self._dev.read(64)
+                if rep:
+                    return bytes(rep)
+                time.sleep(0.05)
+            return None
+        except Exception as e:
+            logger.error("Erreur HID send: %s", e)
+            return None
 
     # -- Gain --
     def set_gain(self, canal: str, db: float):
