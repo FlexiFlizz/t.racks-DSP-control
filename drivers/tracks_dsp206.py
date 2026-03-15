@@ -743,91 +743,119 @@ def cmd_phase_invert(canal: str, inverser: bool) -> bytes:
     return construire_trame(bytes([CMD_PHASE_INVERT, idx, 0x01 if inverser else 0x00]))
 
 
-def cmd_compressor(canal: str, ratio: int = 0, threshold: int = 49,
-                   release: int = 499, knee: int = 0, attack: int = 140) -> bytes:
+def cmd_compressor(canal: str, ratio: int = 0, attack_ms: float = 100,
+                   release_ms: float = 500, knee_db: int = 0,
+                   threshold_db: float = 0.0) -> bytes:
     """Construit la commande du compresseur.
 
-    Verifie par capture Wireshark du PE (2026-03-15).
+    Verifie et calibre par captures Wireshark du PE (2026-03-15).
     Commande : 0x30
-    Payload : ch, ratio(2B LE), threshold(2B LE), release(2B LE), knee(2B LE), attack(2B LE)
+    Layout : cmd ch ratio(2B) attack(2B) release(2B) knee(2B) threshold(2B)
 
-    Valeurs par defaut du DSP : ratio=0, threshold=49, release=499, knee=0, attack=140
+    Encodages :
+        ratio : index 0-15 (0=off/1:1, 1=1.2:1, ... 15=inf:1)
+        attack : brut = ms - 1
+        release : brut = ms - 1
+        knee : brut = dB (direct)
+        threshold : brut = dB * 2 + 180
 
     Args:
         canal: nom du canal de sortie.
-        ratio: index de ratio (0=off, 1=4:1, etc.)
-        threshold: valeur brute du seuil.
-        release: valeur brute du release.
-        knee: valeur brute du knee (0=hard, 6=6dB soft).
-        attack: valeur brute de l'attack.
+        ratio: index de ratio (0=off, 1-15).
+        attack_ms: temps d'attack en ms.
+        release_ms: temps de release en ms.
+        knee_db: knee en dB (0=hard).
+        threshold_db: seuil en dB (-90 a +20).
 
     Returns:
         Trame complete.
     """
     idx = _valider_canal(canal)
+    atk = max(0, round(attack_ms - 1))
+    rel = max(0, round(release_ms - 1))
+    knee = max(0, round(knee_db))
+    thresh = max(0, round(threshold_db * 2 + 180))
     return construire_trame(bytes([
         CMD_COMPRESSOR, idx,
         ratio & 0xFF, (ratio >> 8) & 0xFF,
-        threshold & 0xFF, (threshold >> 8) & 0xFF,
-        release & 0xFF, (release >> 8) & 0xFF,
+        atk & 0xFF, (atk >> 8) & 0xFF,
+        rel & 0xFF, (rel >> 8) & 0xFF,
         knee & 0xFF, (knee >> 8) & 0xFF,
-        attack & 0xFF, (attack >> 8) & 0xFF,
+        thresh & 0xFF, (thresh >> 8) & 0xFF,
     ]))
 
 
-def cmd_gate(canal: str, threshold: int = 0, attack: int = 99,
-             hold: int = 99, release: int = 100) -> bytes:
+def cmd_gate(canal: str, attack_ms: float = 100, release_ms: float = 100,
+             hold_ms: float = 100, threshold_db: float = -90.0) -> bytes:
     """Construit la commande du gate (entrees uniquement).
 
-    Verifie par capture Wireshark du PE (2026-03-15).
+    Verifie et calibre par captures Wireshark du PE (2026-03-15).
     Commande : 0x3E
-    Payload : ch, threshold(2B LE), attack(2B LE), hold(2B LE), release(2B LE)
+    Layout : cmd ch attack(2B) release(2B) hold(2B) threshold(2B)
+
+    Encodages :
+        attack : brut = ms - 1 (non-lineaire en dessous de 1ms)
+        release : brut = ms - 1
+        hold : brut = ms - 1
+        threshold : brut = dB * 2 + 180
 
     Args:
         canal: nom du canal d'entree ('In A' ou 'In B').
-        threshold: valeur brute du seuil.
-        attack: valeur brute de l'attack.
-        hold: valeur brute du hold.
-        release: valeur brute du release.
+        attack_ms: temps d'attack en ms.
+        release_ms: temps de release en ms.
+        hold_ms: temps de hold en ms.
+        threshold_db: seuil en dB (-90 a 0).
 
     Returns:
         Trame complete.
     """
     idx = _valider_canal_entree(canal)
+    atk = max(0, round(attack_ms - 1))
+    rel = max(0, round(release_ms - 1))
+    hold = max(0, round(hold_ms - 1))
+    thresh = max(0, round(threshold_db * 2 + 180))
     return construire_trame(bytes([
         CMD_GATE, idx,
-        threshold & 0xFF, (threshold >> 8) & 0xFF,
-        attack & 0xFF, (attack >> 8) & 0xFF,
+        atk & 0xFF, (atk >> 8) & 0xFF,
+        rel & 0xFF, (rel >> 8) & 0xFF,
         hold & 0xFF, (hold >> 8) & 0xFF,
-        release & 0xFF, (release >> 8) & 0xFF,
+        thresh & 0xFF, (thresh >> 8) & 0xFF,
     ]))
 
 
-def cmd_limiter(canal: str, threshold: int = 49, attack: int = 499,
-                param3: int = 0, release: int = 168) -> bytes:
+def cmd_limiter(canal: str, attack_ms: float = 500, release_ms: float = 500,
+                param3: int = 0, threshold_db: float = 20.0) -> bytes:
     """Construit la commande du limiteur.
 
-    Verifie par capture Wireshark du PE (2026-03-15).
+    Verifie et calibre par captures Wireshark du PE (2026-03-15).
     Commande : 0x3F
-    Payload : ch, threshold(2B LE), attack(2B LE), ??(2B LE), release(2B LE)
+    Layout : cmd ch attack(2B) release(2B) ??(2B) threshold(2B)
+
+    Encodages :
+        attack : brut = ms - 1
+        release : brut = ms - 1
+        threshold : brut = dB * 2 + 180
 
     Args:
         canal: nom du canal de sortie.
-        threshold: valeur brute du seuil.
-        attack: valeur brute de l'attack.
-        param3: parametre inconnu (toujours 0 dans les captures).
-        release: valeur brute du release.
+        attack_ms: temps d'attack en ms.
+        release_ms: temps de release en ms.
+        param3: parametre inconnu (toujours 0).
+        threshold_db: seuil en dB (-90 a +20).
 
     Returns:
         Trame complete.
     """
     idx = _valider_canal(canal)
+    atk = max(0, round(attack_ms - 1))
+    rel = max(0, round(release_ms - 1))
+    thresh = max(0, round(threshold_db * 2 + 180))
     return construire_trame(bytes([
         CMD_LIMITER, idx,
-        threshold & 0xFF, (threshold >> 8) & 0xFF,
-        attack & 0xFF, (attack >> 8) & 0xFF,
+        atk & 0xFF, (atk >> 8) & 0xFF,
+        rel & 0xFF, (rel >> 8) & 0xFF,
         param3 & 0xFF, (param3 >> 8) & 0xFF,
-        release & 0xFF, (release >> 8) & 0xFF,
+        thresh & 0xFF, (thresh >> 8) & 0xFF,
     ]))
 
 
