@@ -8,3 +8,5 @@ dist/
 build/
 systeme.json
 .claude/
+*.png
+temp_*
