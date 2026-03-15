@@ -82,9 +82,17 @@ CMD_GET_ALL_PRESETS = 0x2C
 CMD_LPF = 0x31
 CMD_HPF = 0x32
 CMD_PEQ = 0x33
+CMD_COMPRESSOR = 0x30
 CMD_GAIN = 0x34
 CMD_MUTE = 0x35
+CMD_PHASE_INVERT = 0x36
+CMD_DELAY = 0x38
+CMD_TEST_TONE = 0x39
 CMD_MATRIX = 0x3A
+CMD_LINK = 0x3B
+CMD_CHANNEL_NAME = 0x3D
+CMD_GATE = 0x3E
+CMD_LIMITER = 0x3F
 CMD_METERS = 0x40
 CMD_GEQ = 0x48
 
@@ -715,8 +723,169 @@ def cmd_delay(canal: str, delay_ms: float) -> bytes:
     valeur = round(delay_ms * 96)
     val_lo = valeur & 0xFF
     val_hi = (valeur >> 8) & 0xFF
-    CMD_DELAY = 0x38
     return construire_trame(bytes([CMD_DELAY, idx, val_lo, val_hi]))
+
+
+def cmd_phase_invert(canal: str, inverser: bool) -> bytes:
+    """Construit la commande d'inversion de phase.
+
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Commande : 0x36
+
+    Args:
+        canal: nom du canal.
+        inverser: True pour inverser la phase.
+
+    Returns:
+        Trame complete.
+    """
+    idx = _valider_canal(canal)
+    return construire_trame(bytes([CMD_PHASE_INVERT, idx, 0x01 if inverser else 0x00]))
+
+
+def cmd_compressor(canal: str, ratio: int = 0, threshold: int = 49,
+                   release: int = 499, knee: int = 0, attack: int = 140) -> bytes:
+    """Construit la commande du compresseur.
+
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Commande : 0x30
+    Payload : ch, ratio(2B LE), threshold(2B LE), release(2B LE), knee(2B LE), attack(2B LE)
+
+    Valeurs par defaut du DSP : ratio=0, threshold=49, release=499, knee=0, attack=140
+
+    Args:
+        canal: nom du canal de sortie.
+        ratio: index de ratio (0=off, 1=4:1, etc.)
+        threshold: valeur brute du seuil.
+        release: valeur brute du release.
+        knee: valeur brute du knee (0=hard, 6=6dB soft).
+        attack: valeur brute de l'attack.
+
+    Returns:
+        Trame complete.
+    """
+    idx = _valider_canal(canal)
+    return construire_trame(bytes([
+        CMD_COMPRESSOR, idx,
+        ratio & 0xFF, (ratio >> 8) & 0xFF,
+        threshold & 0xFF, (threshold >> 8) & 0xFF,
+        release & 0xFF, (release >> 8) & 0xFF,
+        knee & 0xFF, (knee >> 8) & 0xFF,
+        attack & 0xFF, (attack >> 8) & 0xFF,
+    ]))
+
+
+def cmd_gate(canal: str, threshold: int = 0, attack: int = 99,
+             hold: int = 99, release: int = 100) -> bytes:
+    """Construit la commande du gate (entrees uniquement).
+
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Commande : 0x3E
+    Payload : ch, threshold(2B LE), attack(2B LE), hold(2B LE), release(2B LE)
+
+    Args:
+        canal: nom du canal d'entree ('In A' ou 'In B').
+        threshold: valeur brute du seuil.
+        attack: valeur brute de l'attack.
+        hold: valeur brute du hold.
+        release: valeur brute du release.
+
+    Returns:
+        Trame complete.
+    """
+    idx = _valider_canal_entree(canal)
+    return construire_trame(bytes([
+        CMD_GATE, idx,
+        threshold & 0xFF, (threshold >> 8) & 0xFF,
+        attack & 0xFF, (attack >> 8) & 0xFF,
+        hold & 0xFF, (hold >> 8) & 0xFF,
+        release & 0xFF, (release >> 8) & 0xFF,
+    ]))
+
+
+def cmd_limiter(canal: str, threshold: int = 49, attack: int = 499,
+                param3: int = 0, release: int = 168) -> bytes:
+    """Construit la commande du limiteur.
+
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Commande : 0x3F
+    Payload : ch, threshold(2B LE), attack(2B LE), ??(2B LE), release(2B LE)
+
+    Args:
+        canal: nom du canal de sortie.
+        threshold: valeur brute du seuil.
+        attack: valeur brute de l'attack.
+        param3: parametre inconnu (toujours 0 dans les captures).
+        release: valeur brute du release.
+
+    Returns:
+        Trame complete.
+    """
+    idx = _valider_canal(canal)
+    return construire_trame(bytes([
+        CMD_LIMITER, idx,
+        threshold & 0xFF, (threshold >> 8) & 0xFF,
+        attack & 0xFF, (attack >> 8) & 0xFF,
+        param3 & 0xFF, (param3 >> 8) & 0xFF,
+        release & 0xFF, (release >> 8) & 0xFF,
+    ]))
+
+
+def cmd_test_tone(tone_type: int = 0, param: int = 0) -> bytes:
+    """Construit la commande du generateur de test.
+
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Commande : 0x39
+
+    Types :
+        0 = OFF
+        1 = Pink noise
+        2 = White noise
+        3 = Sine (param = index de frequence)
+
+    Args:
+        tone_type: type de signal (0=off, 1=pink, 2=white, 3=sine).
+        param: parametre additionnel (index freq pour sine).
+
+    Returns:
+        Trame complete.
+    """
+    return construire_trame(bytes([CMD_TEST_TONE, tone_type, param]))
+
+
+def cmd_link(canal: str, mask: int) -> bytes:
+    """Construit la commande de link entre canaux.
+
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Commande : 0x3B
+
+    Args:
+        canal: nom du canal.
+        mask: bitmask de link.
+
+    Returns:
+        Trame complete.
+    """
+    idx = _valider_canal(canal)
+    return construire_trame(bytes([CMD_LINK, idx, mask]))
+
+
+def cmd_channel_name(canal: str, nom: str) -> bytes:
+    """Construit la commande de renommage de canal.
+
+    Verifie par capture Wireshark du PE (2026-03-15).
+    Commande : 0x3D
+
+    Args:
+        canal: nom du canal.
+        nom: nouveau nom (max 8 caracteres ASCII).
+
+    Returns:
+        Trame complete.
+    """
+    idx = _valider_canal(canal)
+    nom_bytes = nom.encode("ascii", errors="replace")[:8].ljust(8, b"\x00")
+    return construire_trame(bytes([CMD_CHANNEL_NAME, idx]) + nom_bytes)
 
 
 # ---------------------------------------------------------------------------
