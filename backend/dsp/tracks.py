@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 TOPOLOGIES = {
     "DSP 206": {
         "entrees": {"In A": 0x00, "In B": 0x01},
-        "sorties": {"Out 1": 0x04, "Out 2": 0x05, "Out 3": 0x06,
-                    "Out 4": 0x07, "Out 5": 0x08, "Out 6": 0x09},
+        "sorties": {"Out 1": 0x02, "Out 2": 0x03, "Out 3": 0x04,
+                    "Out 4": 0x05, "Out 5": 0x06, "Out 6": 0x07},
         "peq_entree": 8,
         "peq_sortie": 9,
     },

@@ -89,10 +89,13 @@ CMD_METERS = 0x40
 CMD_GEQ = 0x48
 
 # Canaux du DSP 206 (2 entrees, 6 sorties)
+# Mapping verifie sur hardware reel (firmware V0104P)
+# Le DSP 206 utilise des index sequentiels 0x00-0x07
+# (different du DSP 408 qui utilise 0x00-0x03 + 0x04-0x0B)
 CANAUX_ENTREE = {"In A": 0x00, "In B": 0x01}
 CANAUX_SORTIE = {
-    "Out 1": 0x04, "Out 2": 0x05, "Out 3": 0x06,
-    "Out 4": 0x07, "Out 5": 0x08, "Out 6": 0x09,
+    "Out 1": 0x02, "Out 2": 0x03, "Out 3": 0x04,
+    "Out 4": 0x05, "Out 5": 0x06, "Out 6": 0x07,
 }
 TOUS_LES_CANAUX = {**CANAUX_ENTREE, **CANAUX_SORTIE}
 
@@ -720,6 +723,8 @@ def decoder_metres(data: bytes) -> Dict[str, float]:
     niveaux = {}
     # Les donnees commencent a l'octet 6 (apres 10 02 01 00 XX 40)
     offset_debut = 6
+    # Ordre des metres dans la reponse du DSP 206
+    # Correspond au mapping sequentiel 0x00-0x07
     canaux_ordre = ["In A", "In B",
                     "Out 1", "Out 2", "Out 3", "Out 4", "Out 5", "Out 6"]
 

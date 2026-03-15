@@ -66,10 +66,11 @@ CMD_METERS = 0x40
 CMD_GEQ = 0x48
 
 # Canaux DSP 206 : 2 entrees + 6 sorties
+# Mapping verifie sur hardware reel (firmware V0104P)
 NOMS_CANAUX = {
     0x00: "In A", 0x01: "In B",
-    0x04: "Out 1", 0x05: "Out 2", 0x06: "Out 3",
-    0x07: "Out 4", 0x08: "Out 5", 0x09: "Out 6",
+    0x02: "Out 1", 0x03: "Out 2", 0x04: "Out 3",
+    0x05: "Out 4", 0x06: "Out 5", 0x07: "Out 6",
 }
 NB_CANAUX = 8  # pour les metres
 
