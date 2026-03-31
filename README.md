@@ -208,7 +208,7 @@ tools/           Simulateur DSP
 
 ## Licence
 
-MIT
+GPL-3.0 — voir [LICENSE](LICENSE)
 
 ## Credits
 
