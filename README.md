@@ -9,31 +9,42 @@ Boucle fermee complete : **Mesure → Analyse → Correction DSP → Verificatio
 ## Fonctionnalites
 
 ### Calage systeme
-- Alignement temporel sub/top par analyse de phase et reponse impulsionnelle
-- Detection automatique de polarite
-- EQ soustractif automatique (couper les pics, pas booster les creux)
-- Crossover auto-calcule depuis les filtres HPF/LPF du systeme
-- Sequence de calage : Delay → Polarite → All-pass → EQ
+| Fonctionnalite | Statut |
+|----------------|--------|
+| Alignement temporel sub/top (phase + IR) | Fonctionnel |
+| Detection automatique de polarite | Fonctionnel |
+| EQ soustractif automatique | Fonctionnel |
+| Crossover auto-calcule (HPF/LPF) | Fonctionnel |
+| Boucle fermee complete (mesure → correction → re-mesure) | En cours |
 
 ### Interface web
-- Dashboard avec statuts REW/DSP et metres temps reel
-- Bibliotheque d'enceintes (17 presets built-in + custom)
-- Visualisation des mesures REW (SPL, phase)
-- Controle complet du DSP (gain, mute, delay, EQ, crossover, dynamics)
-- Wizard de calage par paires (Sub/Top, Top/Fill, L/R...)
-- Terminal integre avec journal d'operations
+| Fonctionnalite | Statut |
+|----------------|--------|
+| Dashboard (statuts REW/DSP, metres temps reel) | Fonctionnel |
+| Bibliotheque d'enceintes (17 presets + custom) | Fonctionnel |
+| Visualisation mesures REW (SPL, phase) | Fonctionnel |
+| Controle DSP (gain, mute, delay, EQ, crossover, dynamics) | Fonctionnel |
+| Wizard de calage par paires (Sub/Top, Top/Fill...) | Fonctionnel |
+| Metering temps reel | Fonctionnel — polling 2s, WebSocket prevu |
 
 ### Controle DSP
-- Connexion USB HID ou TCP/IP
-- Lecture/ecriture de tous les parametres en temps reel
-- Metering float16 IEEE 754
-- Gestion des presets (load, store, rename)
-- Simulateur DSP integre pour tests sans hardware
+| Fonctionnalite | Statut |
+|----------------|--------|
+| Connexion USB HID | Fonctionnel (DSP 206 verifie) |
+| Connexion TCP/IP | Fonctionnel (simulateur + hardware) |
+| Lecture/ecriture de tous les parametres | Fonctionnel |
+| Metering float16 IEEE 754 | Fonctionnel |
+| Gestion des presets (load, store, rename) | Fonctionnel |
+| Simulateur DSP pour tests sans hardware | Fonctionnel |
+| Login PIN (DSP protege) | Non implemente |
 
 ### Integration REW
-- Client API REST complet (Room EQ Wizard)
-- Decodage des mesures Base64 float32 big-endian
-- Lecture magnitude, phase, reponse impulsionnelle
+| Fonctionnalite | Statut |
+|----------------|--------|
+| Client API REST complet | Fonctionnel |
+| Decodage mesures Base64 float32 | Fonctionnel |
+| Lecture magnitude, phase, IR | Fonctionnel |
+| Ecriture (POST) — necessite REW Pro | Non implemente |
 
 ---
 
@@ -41,10 +52,10 @@ Boucle fermee complete : **Mesure → Analyse → Correction DSP → Verificatio
 
 | Modele | Topologie | Statut |
 |--------|-----------|--------|
-| t.racks DSP 206 | 2 in / 6 out | Verifie sur hardware |
-| t.racks DSP 408 | 4 in / 8 out | Supporte |
-| t.racks DSP 306 | 3 in / 6 out | Supporte |
-| t.racks DSP 204 | 2 in / 4 out | Supporte |
+| t.racks DSP 206 | 2 in / 6 out | Teste sur hardware — protocole complet |
+| t.racks DSP 408 | 4 in / 8 out | Non teste — meme protocole, topologie adaptee dans le code |
+| t.racks DSP 306 | 3 in / 6 out | Non teste — meme protocole, topologie adaptee dans le code |
+| t.racks DSP 204 | 2 in / 4 out | Non teste — meme protocole, topologie adaptee dans le code |
 
 ---
 
@@ -64,47 +75,50 @@ Protocole binaire proprietaire, integralement decode par capture Wireshark du lo
 
 ### Table des commandes
 
-| Cmd | Fonction | Payload |
-|-----|----------|---------|
-| `0x10` | Handshake | — |
-| `0x13` | Device Info | — |
-| `0x20` | Recall Preset | slot |
-| `0x21` | Store Preset | slot |
-| `0x26` | Store Name | name (14B ASCII) |
-| `0x27` | Get Config | chunk_index |
-| `0x29` | Get Preset Name | slot |
-| `0x2A` | Lock | ch, val |
-| `0x2D` | Copy (exec) | 00, src, dest |
-| `0x2F` | Copy (setup) | src, dest |
-| `0x30` | Compresseur | ch, ratio(2B), atk(2B), rel(2B), knee(2B), thresh(2B) |
-| `0x31` | LPF | ch, freq(2B), slope |
-| `0x32` | HPF | ch, freq(2B), slope |
-| `0x33` | PEQ | ch, band, gain(2B), freq(2B), Q(1B), type(1B), bypass(1B) |
-| `0x34` | Gain | ch, val(2B LE) |
-| `0x35` | Mute | ch, on/off |
-| `0x36` | Phase Invert | ch, on/off |
-| `0x38` | Delay | ch, val(2B LE) |
-| `0x39` | Test Tone | type, param |
-| `0x3A` | Matrice Routing | output_ch, input_bitmask |
-| `0x3B` | Link | ch, mask |
-| `0x3D` | Channel Name | ch, name(8B ASCII) |
-| `0x3E` | Gate | ch, atk(2B), rel(2B), hold(2B), thresh(2B) |
-| `0x3F` | Limiter | ch, atk(2B), rel(2B), ??(2B), thresh(2B) |
-| `0x40` | Metres | — |
-| `0x48` | GEQ | ch, band, val(2B) |
+| Cmd | Fonction | Payload | Statut |
+|-----|----------|---------|--------|
+| `0x10` | Handshake | — | Verifie |
+| `0x13` | Device Info | — | Verifie |
+| `0x20` | Recall Preset | slot | Verifie |
+| `0x21` | Store Preset | slot | Verifie |
+| `0x26` | Store Name | name (14B ASCII) | Verifie |
+| `0x27` | Get Config | chunk_index | Verifie |
+| `0x29` | Get Preset Name | slot | Verifie |
+| `0x2A` | Lock | ch, val | Capture uniquement |
+| `0x2D` | Copy (exec) | 00, src, dest | Capture uniquement |
+| `0x2F` | Copy (setup) | src, dest | Capture uniquement |
+| `0x30` | Compresseur | ch, ratio(2B), atk(2B), rel(2B), knee(2B), thresh(2B) | Verifie |
+| `0x31` | LPF | ch, freq(2B), slope | Verifie |
+| `0x32` | HPF | ch, freq(2B), slope | Verifie |
+| `0x33` | PEQ | ch, band, gain(2B), freq(2B), Q(1B), type(1B), bypass(1B) | Verifie |
+| `0x34` | Gain | ch, val(2B LE) | Verifie |
+| `0x35` | Mute | ch, on/off | Verifie |
+| `0x36` | Phase Invert | ch, on/off | Verifie |
+| `0x38` | Delay | ch, val(2B LE) | Verifie |
+| `0x39` | Test Tone | type, param | Capture uniquement |
+| `0x3A` | Matrice Routing | output_ch, input_bitmask | Verifie |
+| `0x3B` | Link | ch, mask | Capture uniquement |
+| `0x3D` | Channel Name | ch, name(8B ASCII) | Verifie |
+| `0x3E` | Gate | ch, atk(2B), rel(2B), hold(2B), thresh(2B) | Verifie |
+| `0x3F` | Limiter | ch, atk(2B), rel(2B), ??(2B), thresh(2B) | Verifie — 1 parametre inconnu |
+| `0x40` | Metres | — | Verifie |
+| `0x48` | GEQ | ch, band, val(2B) | Verifie |
 
-### Encodages verifies sur hardware
+**Legende** : *Verifie* = teste sur hardware DSP 206. *Capture uniquement* = observe dans Wireshark, pas encore implemente/teste.
 
-| Parametre | Encodage | Decodage |
-|-----------|----------|----------|
-| Gain canal | `brut = dB * 10 + 280` | `dB = (brut - 280) / 10` |
-| Gain PEQ/GEQ | `brut = dB * 10 + 120` | `dB = (brut - 120) / 10` |
-| Frequence | `brut = 300 * log10(Hz/20) / 3` | `Hz = 20 * 1000^(brut/300)` |
-| Q (PEQ) | `brut = 40 * log10(Q) + 16` | `Q = 10^((brut-16)/40)` |
-| Delay | `brut = ms * 96` | `ms = brut / 96` |
-| Threshold | `brut = dB * 2 + 180` | `dB = (brut - 180) / 2` |
-| Attack/Release/Hold | `brut = ms - 1` | `ms = brut + 1` |
-| Knee | `brut = dB` | `dB = brut` |
+### Encodages
+
+| Parametre | Encodage | Decodage | Statut |
+|-----------|----------|----------|--------|
+| Gain canal | `brut = dB * 10 + 280` | `dB = (brut - 280) / 10` | Verifie (DSP 206) |
+| Gain PEQ/GEQ | `brut = dB * 10 + 120` | `dB = (brut - 120) / 10` | Verifie (DSP 206) |
+| Frequence (DSP 206) | `brut = 300 * log10(Hz/20) / 3` | `Hz = 20 * 1000^(brut/300)` | Verifie (DSP 206) |
+| Frequence (DSP 408) | `brut = 1000 * ln(Hz/19.7) / ln(1023)` | `Hz = 19.7 * 1023^(brut/1000)` | Non verifie |
+| Q (DSP 206) | `brut = 40 * log10(Q) + 16` | `Q = 10^((brut-16)/40)` | Verifie (DSP 206) |
+| Delay | `brut = ms * 96` | `ms = brut / 96` | Verifie (DSP 206) |
+| Threshold | `brut = dB * 2 + 180` | `dB = (brut - 180) / 2` | Verifie (DSP 206) |
+| Attack/Release/Hold | `brut = ms - 1` | `ms = brut + 1` | Verifie (DSP 206) |
+| Knee | `brut = dB` | `dB = brut` | Verifie (DSP 206) |
 
 ### Mapping canaux (DSP 206)
 
