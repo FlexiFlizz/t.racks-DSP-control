@@ -1,8 +1,8 @@
-# Calage Systeme
+# t.racks DSP Control
 
-Outil open-source de calage et d'alignement systeme son pour processeurs **t.racks DSP** (Thomann/Musicrown).
+Controle open-source des processeurs **t.racks DSP** (Thomann/Musicrown) via protocole reverse-engineere.
 
-Boucle fermee complete : **Mesure → Analyse → Correction DSP → Verification**.
+Interface web + driver Python pour lecture/ecriture de tous les parametres DSP. Module de calage systeme son integre (alignement, EQ soustractif, boucle fermee).
 
 ---
 
@@ -17,15 +17,16 @@ Boucle fermee complete : **Mesure → Analyse → Correction DSP → Verificatio
 | Crossover auto-calcule (HPF/LPF) | Fonctionnel |
 | Boucle fermee complete (mesure → correction → re-mesure) | En cours |
 
-### Interface web
+### Interface web (en construction)
 | Fonctionnalite | Statut |
 |----------------|--------|
 | Dashboard (statuts REW/DSP, metres temps reel) | Fonctionnel |
 | Bibliotheque d'enceintes (17 presets + custom) | Fonctionnel |
 | Visualisation mesures REW (SPL, phase) | Fonctionnel |
 | Controle DSP (gain, mute, delay, EQ, crossover, dynamics) | Fonctionnel |
-| Wizard de calage par paires (Sub/Top, Top/Fill...) | Fonctionnel |
+| Wizard de calage par paires (Sub/Top, Top/Fill...) | En construction |
 | Metering temps reel | Fonctionnel — polling 2s, WebSocket prevu |
+| UI/UX general | En construction |
 
 ### Controle DSP
 | Fonctionnalite | Statut |
